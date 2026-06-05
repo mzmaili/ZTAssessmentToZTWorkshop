@@ -12,26 +12,21 @@ Instead of re-typing assessment results into the Workshop one task at a time, th
 - Maps each assessment test to the matching Workshop task (Identity, Devices, Data, Network)
 - Produces a Workshop-ready JSON file with each task pre-filled with the assessment's findings as notes
 
-The result: your assessment work shows up inside the Workshop as task overrides, ready for your Zero Trust adoption planning.
+The result: your assessment work shows up inside the Workshop tasks, ready for your Zero Trust adoption planning.
+
+## Quick links
+
+- [aka.ms/zta2ztw](https://aka.ms/zta2ztw) → **Access this page directly**
+- [aka.ms/zta2ztw/issues](https://aka.ms/zta2ztw/issues) → **Report a bug or open an issue**
+- [aka.ms/zta2ztw/feedback](https://aka.ms/zta2ztw/feedback) → **Share your feedback — tell us what you like and how we can improve**
 
 ## Prerequisites
 
 - **PowerShell 5.1 or later** (Windows PowerShell or PowerShell 7+)
-- A **Zero Trust Assessment HTML report** — generate one using the [Zero Trust Assessment module](https://github.com/microsoft/zerotrustassessment)
+- A **Zero Trust Assessment HTML report** — generated from the [Zero Trust Assessment module](https://github.com/microsoft/zerotrustassessment)
 - The files from this repository (the script and `test-mapping.json`)
 
-## Get the script
-
-Clone or download this repository:
-
-```powershell
-git clone https://github.com/mzmaili/Convert-ZTAssessmentToZTWorkshop-Private.git
-cd Convert-ZTAssessmentToZTWorkshop-Private
-```
-
-Or download the ZIP from the repository page and extract it.
-
-## Run it
+## Usage
 
 ### Basic usage
 
@@ -60,12 +55,6 @@ ZTA-to-Workshop-2026-06-05_152200.json
     -HtmlFilePath ".\ZeroTrustAssessmentReport.html" `
     -MappingFilePath ".\test-mapping.json"
 ```
-
-## Quick links
-
-- [aka.ms/zta2ztw](https://aka.ms/zta2ztw) → **Project home — access this page directly**
-- [aka.ms/zta2ztw/issues](https://aka.ms/zta2ztw/issues) → **Report a bug or open an issue**
-- [aka.ms/zta2ztw/feedback](https://aka.ms/zta2ztw/feedback) → **Share your feedback — tell us what you like and how we can improve**
 
 ## Parameters
 
