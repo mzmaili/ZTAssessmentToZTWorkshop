@@ -721,13 +721,6 @@ Or run with a relaxed policy for the current session only:
 powershell -ExecutionPolicy Bypass -File .\Convert-ZTAssessmentToZTWorkshop.ps1 -HtmlFilePath ".\ZeroTrustAssessmentReport.html"
 ```
 
-## Feedback
-
-Found an issue or have an idea?
-
-- **Bugs & issues** → [aka.ms/zta2ztw/issues](https://aka.ms/zta2ztw/issues)
-- **Feedback & suggestions** → [aka.ms/zta2ztw/feedback](https://aka.ms/zta2ztw/feedback)
-
 ## Related links
 
 - [Zero Trust Workshop](https://zerotrust.microsoft.com/)
