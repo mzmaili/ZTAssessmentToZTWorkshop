@@ -112,36 +112,34 @@ if (-not [System.IO.Path]::IsPathRooted($MappingFilePath)) {
 }
 Write-Host "Looking for mapping file at: $MappingFilePath"
 $pillarMappings = @{}  # pillar -> hashtable of TestId -> list of OverrideIds
-$hasMappingFile = $false
-if (Test-Path -LiteralPath $MappingFilePath) {
-    try {
-        # Parse manually with regex to support duplicate keys (ConvertFrom-Json drops duplicates)
-        $rawMapping = Get-Content -LiteralPath $MappingFilePath -Raw -Encoding UTF8
-        $totalEntries = 0
-        $pillarRegex = [regex]'"([^"]+)"\s*:\s*\{([^}]*)\}'
-        $entryRegex  = [regex]'"([^"]+)"\s*:\s*"([^"]+)"'
-        foreach ($pillarMatch in $pillarRegex.Matches($rawMapping)) {
-            $pillarKey = $pillarMatch.Groups[1].Value.ToLower()
-            $pillarMappings[$pillarKey] = @{}
-            foreach ($entryMatch in $entryRegex.Matches($pillarMatch.Groups[2].Value)) {
-                $tid = $entryMatch.Groups[1].Value
-                $oid = $entryMatch.Groups[2].Value
-                if (-not $pillarMappings[$pillarKey].ContainsKey($tid)) {
-                    $pillarMappings[$pillarKey][$tid] = [System.Collections.Generic.List[string]]::new()
-                }
-                $pillarMappings[$pillarKey][$tid].Add($oid)
-                $totalEntries++
-            }
-        }
-        $hasMappingFile = $true
-        Write-Host "Loaded mapping file with $totalEntries entries across $($pillarMappings.Count) pillars."
-    }
-    catch {
-        Write-Warning "Failed to parse mapping file '$MappingFilePath'. Falling back to using TestId directly. Error: $_"
-    }
+if (-not (Test-Path -LiteralPath $MappingFilePath)) {
+    Write-Error "Mapping file not found: $MappingFilePath. This file is required and should ship alongside the script."
+    exit 1
 }
-else {
-    Write-Warning "Mapping file not found: $MappingFilePath. Falling back to using TestId directly as the override key."
+try {
+    # Parse manually with regex to support duplicate keys (ConvertFrom-Json drops duplicates)
+    $rawMapping = Get-Content -LiteralPath $MappingFilePath -Raw -Encoding UTF8
+    $totalEntries = 0
+    $pillarRegex = [regex]'"([^"]+)"\s*:\s*\{([^}]*)\}'
+    $entryRegex  = [regex]'"([^"]+)"\s*:\s*"([^"]+)"'
+    foreach ($pillarMatch in $pillarRegex.Matches($rawMapping)) {
+        $pillarKey = $pillarMatch.Groups[1].Value.ToLower()
+        $pillarMappings[$pillarKey] = @{}
+        foreach ($entryMatch in $entryRegex.Matches($pillarMatch.Groups[2].Value)) {
+            $tid = $entryMatch.Groups[1].Value
+            $oid = $entryMatch.Groups[2].Value
+            if (-not $pillarMappings[$pillarKey].ContainsKey($tid)) {
+                $pillarMappings[$pillarKey][$tid] = [System.Collections.Generic.List[string]]::new()
+            }
+            $pillarMappings[$pillarKey][$tid].Add($oid)
+            $totalEntries++
+        }
+    }
+    Write-Host "Loaded mapping file with $totalEntries entries across $($pillarMappings.Count) pillars."
+}
+catch {
+    Write-Error "Failed to parse mapping file '$MappingFilePath'. Fix the JSON and rerun. Error: $_"
+    exit 1
 }
 
 # --- 4. Initialize pillars ---
@@ -190,19 +188,13 @@ foreach ($test in $tests) {
     }
 
     # Resolve override keys — look up in the pillar-specific mapping
-    if ($hasMappingFile) {
-        $pillarMap = if ($pillarMappings.ContainsKey($pillarKey)) { $pillarMappings[$pillarKey] } else { @{} }
-        if ($pillarMap.ContainsKey($testId)) {
-            $overrideIds = $pillarMap[$testId]
-        }
-        else {
-            # TestId has no mapping in this pillar — skip it
-            continue
-        }
+    $pillarMap = if ($pillarMappings.ContainsKey($pillarKey)) { $pillarMappings[$pillarKey] } else { @{} }
+    if ($pillarMap.ContainsKey($testId)) {
+        $overrideIds = $pillarMap[$testId]
     }
     else {
-        # No mapping file loaded — use TestId directly
-        $overrideIds = @($testId)
+        # TestId has no mapping in this pillar — skip it
+        continue
     }
 
     # Extract notes: text between first \n and second \n
