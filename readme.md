@@ -24,6 +24,12 @@ The result: your assessment work shows up inside the Workshop tasks, ready for y
 - [aka.ms/zta2ztws/issues](https://aka.ms/zta2ztws/issues) → **Report a bug or open an issue**
 - [aka.ms/zta2ztws/feedback](https://aka.ms/zta2ztws/feedback) → **Share your feedback — tell us what you like and how we can improve**
 
+## See it in action
+
+The demo below shows the end-to-end flow — running the script against an assessment report and importing the generated JSON so the findings appear as notes on the matching Zero Trust Workshop tasks.
+
+![Demo: converting a Zero Trust Assessment report and importing the findings into the Zero Trust Workshop](ZTA2ZTWS.gif)
+
 ## Prerequisites
 
 - **PowerShell 5.1 or later** (Windows PowerShell or PowerShell 7+)
