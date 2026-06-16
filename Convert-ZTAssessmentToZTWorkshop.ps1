@@ -69,13 +69,13 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 # Pillars to pre-initialize in the output. Includes pillars that don't yet have
-# any test mappings — they appear in the output as empty placeholders so the
+# any test mappings - they appear in the output as empty placeholders so the
 # Workshop importer always sees the same shape regardless of mapping coverage.
 $script:KnownPillars = @('identity', 'devices', 'data', 'network', 'infrastructure', 'security-ops', 'ai')
 
 # The Workshop importer rejects any task whose notes field exceeds this many
-# characters (spaces included). The combined notes for each task — including the
-# "ZT Assessment result:" wrapper — are hard-capped to this length so the export
+# characters (spaces included). The combined notes for each task - including the
+# "ZT Assessment result:" wrapper - are hard-capped to this length so the export
 # always imports successfully regardless of how many tests map to one task.
 $script:MaxNotesLength = 1000
 
@@ -109,14 +109,27 @@ function Remove-MarkdownFormatting {
 # notes (and to leave room for more findings under the overall hard cap).
 $script:MaxNotesLineLength = 200
 
+# Status icons are built from Unicode code points rather than embedded as literal
+# emoji in the source. Windows PowerShell 5.1 decodes .ps1 files using the system
+# ANSI code page unless the file carries a UTF-8 BOM; literal emoji then turn into
+# mojibake (a multi-character sequence) on that host. Building them from code
+# points makes the output correct regardless of how the script file is decoded.
+$script:IconPassed  = [char]::ConvertFromUtf32(0x2705)                 # check mark
+$script:IconFailed  = [char]::ConvertFromUtf32(0x274C)                 # cross mark
+$script:IconWarning = [char]::ConvertFromUtf32(0x26A0) + [char]0xFE0F  # warning sign + variation selector
+# Horizontal ellipsis for the "more findings" marker, also built from a code
+# point so the marker text written to the notes is never affected by how the
+# script file itself is decoded.
+$script:Ellipsis = [char]::ConvertFromUtf32(0x2026)                   # ...
+
 function Get-StatusIcon {
     # Maps a TestStatus to a status icon used when compacting long note lines.
     #   Passed -> check, Failed -> cross, anything else -> warning.
     param([string]$Status)
     switch -Regex ($Status) {
-        '^Passed$' { return '✅' }
-        '^Failed$' { return '❌' }
-        default    { return '⚠️' }
+        '^Passed$' { return $script:IconPassed }
+        '^Failed$' { return $script:IconFailed }
+        default    { return $script:IconWarning }
     }
 }
 
@@ -269,7 +282,7 @@ $skippedPillarFilter = 0
 foreach ($test in $tests) {
     $testId = [string]$test.TestId
 
-    # Skip tests whose status is "Skipped" — they don't represent an
+    # Skip tests whose status is "Skipped" - they don't represent an
     # assessed result and only add noise to the override notes.
     $testStatus = if ($test.PSObject.Properties['TestStatus']) { [string]$test.TestStatus } else { '' }
     if ($testStatus -ieq 'Skipped') {
@@ -294,13 +307,13 @@ foreach ($test in $tests) {
         continue
     }
 
-    # Resolve override keys — look up in the pillar-specific mapping
+    # Resolve override keys - look up in the pillar-specific mapping
     $pillarMap = if ($pillarMappings.ContainsKey($pillarKey)) { $pillarMappings[$pillarKey] } else { @{} }
     if ($pillarMap.ContainsKey($testId)) {
         $overrideIds = $pillarMap[$testId]
     }
     else {
-        # TestId has no mapping in this pillar — skip it
+        # TestId has no mapping in this pillar - skip it
         continue
     }
 
@@ -333,7 +346,7 @@ foreach ($test in $tests) {
             }
         }
         else {
-            # No newline at all — use entire trimmed TestResult
+            # No newline at all - use entire trimmed TestResult
             $notesText = $testResult.Trim()
         }
     }
@@ -373,7 +386,7 @@ foreach ($test in $tests) {
     }
 
     foreach ($overrideId in $overrideIds) {
-        # Collect notes per overrideId — combine all mapped TestResults (skip empty)
+        # Collect notes per overrideId - combine all mapped TestResults (skip empty)
         if ($notesText.Length -gt 0) {
             $noteKey = "$pillarKey|$overrideId"
             if (-not $collectedNotes.ContainsKey($noteKey)) {
@@ -398,7 +411,7 @@ foreach ($noteKey in $collectedNotes.Keys) {
     $parts = $noteKey -split '\|', 2
     $pKey = $parts[0]
     $oKey = $parts[1]
-    # Deduplicate identical lines — the Workshop importer rejects entries
+    # Deduplicate identical lines - the Workshop importer rejects entries
     # whose notes contain repeated lines.
     $uniqueLines = [System.Collections.Generic.List[string]]::new()
     $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
@@ -428,7 +441,7 @@ foreach ($noteKey in $collectedNotes.Keys) {
             $prospective = $runningLen + $sep + $line.Length
             # Reserve room for the drop marker if any lines would remain after this one.
             $dropAfter = $total - ($kept.Count + 1)
-            $markerLen = if ($dropAfter -gt 0) { 1 + "…(+$dropAfter more findings)".Length } else { 0 }
+            $markerLen = if ($dropAfter -gt 0) { 1 + "$($script:Ellipsis)(+$dropAfter more findings)".Length } else { 0 }
             if (($prospective + $markerLen) -le $bodyBudget) {
                 $kept.Add($line)
                 $runningLen = $prospective
@@ -440,7 +453,7 @@ foreach ($noteKey in $collectedNotes.Keys) {
         $dropped   = $total - $kept.Count
         $finalBody = $kept -join "`n"
         if ($dropped -gt 0) {
-            $marker = "…(+$dropped more findings)"
+            $marker = "$($script:Ellipsis)(+$dropped more findings)"
             $finalBody = if ($finalBody.Length -gt 0) { "$finalBody`n$marker" } else { $marker }
         }
         Write-Warning "Notes for $pKey/$oKey exceeded $script:MaxNotesLength chars; kept $($kept.Count) of $total finding(s)."
@@ -511,7 +524,20 @@ $jsonOutput = ($jsonOutput -split "`n" | ForEach-Object {
         $_
     }
 }) -join "`n"
-$jsonOutput | Out-File -LiteralPath $OutputFilePath -Encoding UTF8 -Force
+# Write as UTF-8 without a BOM, consistently across PowerShell editions. Out-File
+# -Encoding UTF8 emits a BOM on Windows PowerShell 5.1 but not on PowerShell 7;
+# writing via .NET keeps the bytes identical everywhere and avoids a stray BOM in
+# the JSON. Resolve relative paths against the current location so .NET and
+# PowerShell agree on the destination.
+$resolvedOutputPath = if ([System.IO.Path]::IsPathRooted($OutputFilePath)) {
+    $OutputFilePath
+}
+else {
+    Join-Path (Get-Location).Path $OutputFilePath
+}
+# End the file with a single trailing newline (matches prior Out-File output).
+if (-not $jsonOutput.EndsWith("`n")) { $jsonOutput += [Environment]::NewLine }
+[System.IO.File]::WriteAllText($resolvedOutputPath, $jsonOutput, (New-Object System.Text.UTF8Encoding($false)))
 
 if ($skippedNoPillar -gt 0) {
     Write-Host "Skipped $skippedNoPillar test(s) with missing/empty TestPillar."
