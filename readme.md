@@ -28,7 +28,7 @@ The result: your assessment work shows up inside the Workshop tasks, ready for y
 
 The demo below shows the end-to-end flow — running the script against an assessment report and importing the generated JSON so the findings appear as notes on the matching Zero Trust Workshop tasks.
 
-![Demo: converting a Zero Trust Assessment report and importing the findings into the Zero Trust Workshop](ZTA2ZTWS.gif)
+![Demo: converting a Zero Trust Assessment report and importing the findings into the Zero Trust Workshop](https://media.githubusercontent.com/media/mzmaili/Shared/main/ZTA2ZTWS.gif)
 
 ## Prerequisites
 
